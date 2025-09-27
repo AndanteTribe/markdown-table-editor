@@ -235,4 +235,125 @@ describe('useTableData', () => {
     // コピーされたデータが正しいことを確認
     expect(copiedData).toBe('セル1\tセル2\nセル3\tセル4\n')
   })
+
+  // New insert/delete functionality tests
+  it('insertRowAt: 指定位置に行を挿入できること', () => {
+    const { result } = renderHook(() => useTableData(initialData))
+    
+    act(() => {
+      result.current.insertRowAt(1) // インデックス1（2行目）に挿入
+    })
+    
+    // 行数が増えていることを確認
+    expect(result.current.data.length).toBe(3)
+    // 挿入された行が正しい位置にあることを確認
+    expect(result.current.data[1][0].value).toBe('')
+    expect(result.current.data[1][1].value).toBe('')
+    // 元のデータがずれていることを確認
+    expect(result.current.data[2][0].value).toBe('セル3')
+    expect(result.current.data[2][1].value).toBe('セル4')
+  })
+
+  it('insertColumnAt: 指定位置に列を挿入できること', () => {
+    const { result } = renderHook(() => useTableData(initialData))
+    
+    act(() => {
+      result.current.insertColumnAt(1) // インデックス1（2列目）に挿入
+    })
+    
+    // 列数が増えていることを確認
+    expect(result.current.data[0].length).toBe(3)
+    expect(result.current.data[1].length).toBe(3)
+    
+    // 挿入された列が正しい位置にあることを確認
+    expect(result.current.data[0][1].value).toBe('')
+    expect(result.current.data[1][1].value).toBe('')
+    
+    // 元のデータがずれていることを確認
+    expect(result.current.data[0][2].value).toBe('セル2')
+    expect(result.current.data[1][2].value).toBe('セル4')
+  })
+
+  it('removeRowAt: 指定位置の行を削除できること', () => {
+    const { result } = renderHook(() => useTableData(initialData))
+    
+    act(() => {
+      result.current.removeRowAt(0) // 最初の行を削除
+    })
+    
+    // 行数が減っていることを確認
+    expect(result.current.data.length).toBe(1)
+    // 正しい行が残っていることを確認
+    expect(result.current.data[0][0].value).toBe('セル3')
+    expect(result.current.data[0][1].value).toBe('セル4')
+  })
+
+  it('removeColumnAt: 指定位置の列を削除できること', () => {
+    const { result } = renderHook(() => useTableData(initialData))
+    
+    act(() => {
+      result.current.removeColumnAt(0) // 最初の列を削除
+    })
+    
+    // 列数が減っていることを確認
+    expect(result.current.data[0].length).toBe(1)
+    expect(result.current.data[1].length).toBe(1)
+    
+    // 正しい列が残っていることを確認
+    expect(result.current.data[0][0].value).toBe('セル2')
+    expect(result.current.data[1][0].value).toBe('セル4')
+  })
+
+  it('insertRowAt: 範囲外のインデックスでは何もしないこと', () => {
+    const { result } = renderHook(() => useTableData(initialData))
+    
+    act(() => {
+      result.current.insertRowAt(-1) // 負のインデックス
+    })
+    
+    // 行数が変わっていないことを確認
+    expect(result.current.data.length).toBe(2)
+    
+    act(() => {
+      result.current.insertRowAt(10) // 大きすぎるインデックス
+    })
+    
+    // 行数が変わっていないことを確認
+    expect(result.current.data.length).toBe(2)
+  })
+
+  it('removeRowAt: 最後の行の場合は削除しないこと', () => {
+    const singleRowData = [
+      [
+        { value: 'セル1', isEditing: false },
+        { value: 'セル2', isEditing: false }
+      ]
+    ]
+    
+    const { result } = renderHook(() => useTableData(singleRowData))
+    
+    act(() => {
+      result.current.removeRowAt(0)
+    })
+    
+    // 行数が変わっていないことを確認
+    expect(result.current.data.length).toBe(1)
+  })
+
+  it('removeColumnAt: 最後の列の場合は削除しないこと', () => {
+    const singleColumnData = [
+      [{ value: 'セル1', isEditing: false }],
+      [{ value: 'セル2', isEditing: false }]
+    ]
+    
+    const { result } = renderHook(() => useTableData(singleColumnData))
+    
+    act(() => {
+      result.current.removeColumnAt(0)
+    })
+    
+    // 列数が変わっていないことを確認
+    expect(result.current.data[0].length).toBe(1)
+    expect(result.current.data[1].length).toBe(1)
+  })
 }) 

@@ -84,8 +84,10 @@ export const Table: FC<TableProps> = ({ initialData, onSave, onAutoSave }) => {
     addColumn,
     addMultipleRows,
     addMultipleColumns,
-    removeRow,
-    removeColumn,
+    insertRowAt,
+    insertColumnAt,
+    removeRowAt,
+    removeColumnAt,
     undoAction,
     redoAction,
     canUndo,
@@ -168,42 +170,66 @@ export const Table: FC<TableProps> = ({ initialData, onSave, onAutoSave }) => {
     addMultipleColumns
   })
 
-  // 行を安全に削除（選択状態を考慮）
-  const safeRemoveRow = () => {
-    if (data.length <= 1) return
-
-    // 最後の行が選択されているかチェック
-    const lastRowIndex = data.length - 1
-    const isLastRowSelected = selection &&
-      (Math.min(selection.start.row, selection.end.row) <= lastRowIndex &&
-        Math.max(selection.start.row, selection.end.row) >= lastRowIndex)
-
-    // 最後の行が選択されている場合は選択を解除
-    if (isLastRowSelected) {
-      clearSelection()
+  // 現在のセルの上に行を挿入
+  const insertRowAbove = () => {
+    if (!currentCell) {
+      // セルが選択されていない場合は先頭に挿入
+      insertRowAt(0)
+    } else {
+      insertRowAt(currentCell.row)
     }
-
-    // 行を削除
-    removeRow()
   }
 
-  // 列を安全に削除（選択状態を考慮）
-  const safeRemoveColumn = () => {
-    if (data[0].length <= 1) return
-
-    // 最後の列が選択されているかチェック
-    const lastColIndex = data[0].length - 1
-    const isLastColSelected = selection &&
-      (Math.min(selection.start.col, selection.end.col) <= lastColIndex &&
-        Math.max(selection.start.col, selection.end.col) >= lastColIndex)
-
-    // 最後の列が選択されている場合は選択を解除
-    if (isLastColSelected) {
-      clearSelection()
+  // 現在のセルの下に行を挿入
+  const insertRowBelow = () => {
+    if (!currentCell) {
+      // セルが選択されていない場合は末尾に挿入
+      addRow()
+    } else {
+      insertRowAt(currentCell.row + 1)
     }
+  }
 
-    // 列を削除
-    removeColumn()
+  // 現在のセルの左に列を挿入
+  const insertColumnLeft = () => {
+    if (!currentCell) {
+      // セルが選択されていない場合は先頭に挿入
+      insertColumnAt(0)
+    } else {
+      insertColumnAt(currentCell.col)
+    }
+  }
+
+  // 現在のセルの右に列を挿入
+  const insertColumnRight = () => {
+    if (!currentCell) {
+      // セルが選択されていない場合は末尾に挿入
+      addColumn()
+    } else {
+      insertColumnAt(currentCell.col + 1)
+    }
+  }
+
+  // 選択された行を削除
+  const deleteSelectedRow = () => {
+    if (data.length <= 1) return
+    if (!currentCell) return
+
+    // 行を削除する前に選択をクリア
+    const rowToDelete = currentCell.row
+    clearSelection()
+    removeRowAt(rowToDelete)
+  }
+
+  // 選択された列を削除
+  const deleteSelectedColumn = () => {
+    if (data[0].length <= 1) return
+    if (!currentCell) return
+
+    // 列を削除する前に選択をクリア
+    const colToDelete = currentCell.col
+    clearSelection()
+    removeColumnAt(colToDelete)
   }
 
   // セル値が変更されたときの処理
@@ -421,29 +447,41 @@ export const Table: FC<TableProps> = ({ initialData, onSave, onAutoSave }) => {
 
         <div className={styles.toolbarGroup}>
           <IconButton
-            iconType={IconType.ADD_ROW}
-            onClick={addRow}
-            title="Add Row"
+            iconType={IconType.INSERT_ROW_ABOVE}
+            onClick={insertRowAbove}
+            title={currentCell ? `Insert Row Above Row ${currentCell.row + 1}` : "Insert Row at Top"}
             category="structure"
           />
           <IconButton
-            iconType={IconType.ADD_COLUMN}
-            onClick={addColumn}
-            title="Add Column"
+            iconType={IconType.INSERT_ROW_BELOW}
+            onClick={insertRowBelow}
+            title={currentCell ? `Insert Row Below Row ${currentCell.row + 1}` : "Add Row at Bottom"}
             category="structure"
           />
           <IconButton
-            iconType={IconType.REMOVE_ROW}
-            onClick={safeRemoveRow}
-            disabled={data.length <= 1}
-            title="Remove Row"
+            iconType={IconType.INSERT_COLUMN_LEFT}
+            onClick={insertColumnLeft}
+            title={currentCell ? `Insert Column Left of Column ${currentCell.col + 1}` : "Insert Column at Left"}
             category="structure"
           />
           <IconButton
-            iconType={IconType.REMOVE_COLUMN}
-            onClick={safeRemoveColumn}
-            disabled={data[0].length <= 1}
-            title="Remove Column"
+            iconType={IconType.INSERT_COLUMN_RIGHT}
+            onClick={insertColumnRight}
+            title={currentCell ? `Insert Column Right of Column ${currentCell.col + 1}` : "Add Column at Right"}
+            category="structure"
+          />
+          <IconButton
+            iconType={IconType.DELETE_SELECTED_ROW}
+            onClick={deleteSelectedRow}
+            disabled={data.length <= 1 || !currentCell}
+            title={currentCell ? `Delete Row ${currentCell.row + 1}` : "Delete Selected Row"}
+            category="structure"
+          />
+          <IconButton
+            iconType={IconType.DELETE_SELECTED_COLUMN}
+            onClick={deleteSelectedColumn}
+            disabled={data[0].length <= 1 || !currentCell}
+            title={currentCell ? `Delete Column ${currentCell.col + 1}` : "Delete Selected Column"}
             category="structure"
           />
         </div>
