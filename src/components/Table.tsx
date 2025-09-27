@@ -86,7 +86,9 @@ export const Table: FC<TableProps> = ({ initialData, onSave, onAutoSave }) => {
     addMultipleColumns,
     insertRowAt,
     insertColumnAt,
+    removeRow,
     removeRowAt,
+    removeColumn,
     removeColumnAt,
     undoAction,
     redoAction,
@@ -230,6 +232,44 @@ export const Table: FC<TableProps> = ({ initialData, onSave, onAutoSave }) => {
     const colToDelete = currentCell.col
     clearSelection()
     removeColumnAt(colToDelete)
+  }
+
+  // 行を安全に削除（選択状態を考慮）
+  const safeRemoveRow = () => {
+    if (data.length <= 1) return
+
+    // 最後の行が選択されているかチェック
+    const lastRowIndex = data.length - 1
+    const isLastRowSelected = selection &&
+      (Math.min(selection.start.row, selection.end.row) <= lastRowIndex &&
+        Math.max(selection.start.row, selection.end.row) >= lastRowIndex)
+
+    // 最後の行が選択されている場合は選択を解除
+    if (isLastRowSelected) {
+      clearSelection()
+    }
+
+    // 行を削除
+    removeRow()
+  }
+
+  // 列を安全に削除（選択状態を考慮）
+  const safeRemoveColumn = () => {
+    if (data[0].length <= 1) return
+
+    // 最後の列が選択されているかチェック
+    const lastColIndex = data[0].length - 1
+    const isLastColSelected = selection &&
+      (Math.min(selection.start.col, selection.end.col) <= lastColIndex &&
+        Math.max(selection.start.col, selection.end.col) >= lastColIndex)
+
+    // 最後の列が選択されている場合は選択を解除
+    if (isLastColSelected) {
+      clearSelection()
+    }
+
+    // 列を削除
+    removeColumn()
   }
 
   // セル値が変更されたときの処理
@@ -440,6 +480,37 @@ export const Table: FC<TableProps> = ({ initialData, onSave, onAutoSave }) => {
             disabled={!selection}
             title="Clear Selection (Delete)"
             category="edit"
+          />
+        </div>
+
+        <div className={styles.divider}></div>
+
+        <div className={styles.toolbarGroup}>
+          <IconButton
+            iconType={IconType.ADD_ROW}
+            onClick={addRow}
+            title="Add Row"
+            category="structure"
+          />
+          <IconButton
+            iconType={IconType.ADD_COLUMN}
+            onClick={addColumn}
+            title="Add Column"
+            category="structure"
+          />
+          <IconButton
+            iconType={IconType.REMOVE_ROW}
+            onClick={safeRemoveRow}
+            disabled={data.length <= 1}
+            title="Remove Row"
+            category="structure"
+          />
+          <IconButton
+            iconType={IconType.REMOVE_COLUMN}
+            onClick={safeRemoveColumn}
+            disabled={data[0].length <= 1}
+            title="Remove Column"
+            category="structure"
           />
         </div>
 
