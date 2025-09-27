@@ -25,7 +25,8 @@ declare global {
 
 type TableProps = {
   initialData: TableData,
-  onSave: (markdown: string) => void
+  onSave: (markdown: string) => void,
+  onAutoSave?: (markdown: string) => void
 }
 
 // 文字揃えの型定義
@@ -45,7 +46,7 @@ const alignButtons: AlignButton[] = [
   { align: 'right', icon: IconType.ALIGN_RIGHT, title: '右揃え' },
 ]
 
-export const Table: FC<TableProps> = ({ initialData, onSave }) => {
+export const Table: FC<TableProps> = ({ initialData, onSave, onAutoSave }) => {
   const tableRef = useRef<HTMLDivElement>(null)
   // 初期データから文字揃え情報を取得
   const [columnAligns, setColumnAligns] = useState<TextAlign[]>(() => {
@@ -90,6 +91,31 @@ export const Table: FC<TableProps> = ({ initialData, onSave }) => {
     canUndo,
     canRedo
   } = useTableData(initialData)
+
+  // 自動保存機能（データが変更されたとき3秒後に自動保存）
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  useEffect(() => {
+    if (onAutoSave) {
+      // 既存のタイマーをクリア
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
+      // 3秒後に自動保存を実行
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        const markdown = convertToMarkdown(data, columnAligns);
+        onAutoSave(markdown);
+      }, 3000); // 3秒のデバウンス
+    }
+    
+    // クリーンアップ
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [data, columnAligns, onAutoSave]); // dataまたはcolumnAlignsが変更されたときに実行
 
   // 初期表示時にセル幅を自動調整
   useEffect(() => {
