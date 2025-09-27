@@ -20,7 +20,28 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "commands": [],
+    "commands": [
+      {
+        "command": "markdown-table-editor.createNewTable",
+        "title": "Create New Table",
+        "category": "Markdown Table Editor"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "editorLangId == markdown",
+          "command": "markdown-table-editor.createNewTable",
+          "group": "markdown@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "markdown-table-editor.createNewTable",
+          "when": "editorLangId == markdown"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "markdown",
