@@ -228,7 +228,80 @@ export const useTableData = (initialData: TableData) => {
   }, [data, updateDataWithHistory]);
 
   /**
-   * 行を削除
+   * 指定位置に行を挿入
+   * @param index 挿入位置のインデックス
+   */
+  const insertRowAt = useCallback((index: number) => {
+    if (index < 0 || index > data.length) return
+    
+    // 既存の行のセル幅を参照して新しい行を作成
+    const referenceRowWidths = data.length > 0 
+      ? data[0].map(cell => cell.width || 80)
+      : Array(data[0]?.length || 1).fill(80)
+    
+    const newRow = Array(data[0]?.length || 1).fill(null).map((_, cellIndex) => ({
+      value: '',
+      isEditing: false,
+      width: referenceRowWidths[cellIndex]
+    }))
+    
+    const newData = [...data]
+    newData.splice(index, 0, newRow)
+    updateDataWithHistory(newData, HistoryActionType.ADD_ROW)
+  }, [data, updateDataWithHistory])
+
+  /**
+   * 指定位置に列を挿入
+   * @param index 挿入位置のインデックス
+   */
+  const insertColumnAt = useCallback((index: number) => {
+    if (index < 0 || index > (data[0]?.length || 0)) return
+    
+    const newData = data.map(row => {
+      const newRow = [...row]
+      newRow.splice(index, 0, {
+        value: '',
+        isEditing: false,
+        width: 80 // デフォルト幅
+      })
+      return newRow
+    })
+    
+    updateDataWithHistory(newData, HistoryActionType.ADD_COLUMN)
+  }, [data, updateDataWithHistory])
+
+  /**
+   * 指定位置の行を削除
+   * @param index 削除する行のインデックス
+   */
+  const removeRowAt = useCallback((index: number) => {
+    if (data.length <= 1) return
+    if (index < 0 || index >= data.length) return
+    
+    const newData = [...data]
+    newData.splice(index, 1)
+    updateDataWithHistory(newData, HistoryActionType.REMOVE_ROW)
+  }, [data, updateDataWithHistory])
+
+  /**
+   * 指定位置の列を削除
+   * @param index 削除する列のインデックス
+   */
+  const removeColumnAt = useCallback((index: number) => {
+    if (data[0].length <= 1) return
+    if (index < 0 || index >= data[0].length) return
+    
+    const newData = data.map(row => {
+      const newRow = [...row]
+      newRow.splice(index, 1)
+      return newRow
+    })
+    
+    updateDataWithHistory(newData, HistoryActionType.REMOVE_COLUMN)
+  }, [data, updateDataWithHistory])
+
+  /**
+   * 行を削除（最後の行を削除）
    */
   const removeRow = useCallback(() => {
     if (data.length <= 1) return
@@ -239,7 +312,7 @@ export const useTableData = (initialData: TableData) => {
   }, [data, updateDataWithHistory])
 
   /**
-   * 列を削除
+   * 列を削除（最後の列を削除）
    */
   const removeColumn = useCallback(() => {
     if (data[0].length <= 1) return
@@ -308,8 +381,12 @@ export const useTableData = (initialData: TableData) => {
     addMultipleRows,
     addColumn,
     addMultipleColumns,
+    insertRowAt,
+    insertColumnAt,
     removeRow,
+    removeRowAt,
     removeColumn,
+    removeColumnAt,
     copyData,
     undoAction,
     redoAction,

@@ -594,6 +594,13 @@ class TableEditorPanel {
 
 	private _updateTable(updatedTableData: TableData, closeWebview: boolean, markdownTableFromWebview?: string) {
 		try {
+			console.log('_updateTable called with:', {
+				originalStartLine: updatedTableData.startLine,
+				originalEndLine: updatedTableData.endLine,
+				markdownLength: markdownTableFromWebview?.length || 0,
+				closeWebview
+			});
+			
 			// エディタが有効かどうかを確認
 			if (!this._editor || !this._editor.document || this._editor.document.isClosed) {
 				// 現在アクティブなエディタを取得
@@ -606,21 +613,34 @@ class TableEditorPanel {
 				this._editor = activeEditor;
 			}
 			
+			// 現在のテーブルの実際の境界を動的に検出
+			const currentTableBounds = this._findCurrentTableBounds(updatedTableData.startLine);
+			if (!currentTableBounds) {
+				vscode.window.showErrorMessage('テーブルの境界を検出できませんでした。');
+				return;
+			}
+			
+			console.log('Current table bounds detected:', currentTableBounds);
+			
 			// エディタを更新
 			const edit = new vscode.WorkspaceEdit();
 			const range = new vscode.Range(
-				new vscode.Position(updatedTableData.startLine, 0),
-				new vscode.Position(updatedTableData.endLine, 999999)
+				new vscode.Position(currentTableBounds.startLine, 0),
+				new vscode.Position(currentTableBounds.endLine + 1, 0) // 次の行の始めまでを含める
 			);
 			
-			// テーブルをMarkdown形式に変換
-			const markdown = markdownTableFromWebview || "";
+			// テーブルをMarkdown形式に変換（末尾に改行を追加）
+			const markdown = markdownTableFromWebview ? markdownTableFromWebview + '\n' : "";
 			edit.replace(this._editor.document.uri, range, markdown);
 			
 			// 変更を適用
 			vscode.workspace.applyEdit(edit).then(success => {
 				if (success) {
-					console.log('テーブルを更新しました');
+					console.log('テーブル更新成功 - 置換範囲:', {
+						startLine: currentTableBounds.startLine,
+						endLine: currentTableBounds.endLine + 1,
+						newMarkdownLines: markdown.split('\n').length
+					});
 					// Webviewを閉じる
 					if (closeWebview) {
 						this._panel.dispose();
@@ -632,6 +652,47 @@ class TableEditorPanel {
 		} catch (error) {
 			console.error('テーブル更新中にエラーが発生しました:', error);
 			vscode.window.showErrorMessage(`テーブル更新中にエラーが発生しました: ${error}`);
+		}
+	}
+
+	private _findCurrentTableBounds(originalStartLine: number): { startLine: number; endLine: number } | null {
+		try {
+			if (!this._editor) return null;
+			
+			const document = this._editor.document;
+			
+			// 元の開始行周辺でテーブルを探す（多少の行移動に対応）
+			let searchStart = Math.max(0, originalStartLine - 5);
+			let searchEnd = Math.min(document.lineCount - 1, originalStartLine + 10);
+			
+			// テーブルの開始を見つける
+			let startLine = -1;
+			for (let i = searchStart; i <= searchEnd; i++) {
+				if (i >= document.lineCount) break;
+				if (TABLE_REGEX.test(document.lineAt(i).text)) {
+					// テーブル行が見つかったら、その開始を見つける
+					startLine = i;
+					while (startLine > 0 && TABLE_REGEX.test(document.lineAt(startLine - 1).text)) {
+						startLine--;
+					}
+					break;
+				}
+			}
+			
+			if (startLine === -1) {
+				return null;
+			}
+			
+			// テーブルの終了を見つける
+			let endLine = startLine;
+			while (endLine < document.lineCount - 1 && TABLE_REGEX.test(document.lineAt(endLine + 1).text)) {
+				endLine++;
+			}
+			
+			return { startLine, endLine };
+		} catch (error) {
+			console.error('テーブル境界検出中にエラー:', error);
+			return null;
 		}
 	}
 

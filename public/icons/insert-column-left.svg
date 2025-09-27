@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg width="800px" height="800px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M4 20H20V4H4V20ZM5.5 18.5V5.5H10.9996L11 18.5H5.5ZM12.5 18.5L12.4999 16.5H18.5L18.5 18.5H12.5ZM18.5 15H12.4999L12.4998 13H18.5V15ZM18.5 11.5H12.4998L12.4997 9.51959H18.5L18.5 11.5ZM18.5 8.01959H12.4997L12.4996 5.5H18.5V8.01959Z" fill="#1F2328"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M6 12.5V15H7.5V12.5H10.0001V11H7.5V8.5H6V11H3.5V12.5H6Z" fill="#1F2328"/>
+<polygon points="2,12 5,9 5,15" fill="#1F2328"/>
+</svg>
