@@ -26,6 +26,29 @@ export function activate(context: vscode.ExtensionContext) {
 		// テーブル編集パネルを表示
 		TableEditorPanel.createOrShow(context.extensionUri, tableData, editor);
 	});
+
+	// 新しいテーブルを作成するコマンドを登録
+	const createNewTableCommand = vscode.commands.registerCommand('markdown-table-editor.createNewTable', async () => {
+		const editor = vscode.window.activeTextEditor;
+		if (!editor) {
+			vscode.window.showErrorMessage('アクティブなエディタがありません');
+			return;
+		}
+
+		if (editor.document.languageId !== 'markdown') {
+			vscode.window.showErrorMessage('Markdownファイルでのみ使用できます');
+			return;
+		}
+
+		// テーブルのサイズを設定するための入力を取得
+		const tableSize = await getTableSizeFromUser();
+		if (!tableSize) {
+			return; // ユーザーがキャンセルした場合
+		}
+
+		// 新しいテーブルを作成して挿入
+		await createAndInsertNewTable(context.extensionUri, editor, tableSize.rows, tableSize.columns);
+	});
 	
 	// テキストエディタの変更を監視
 	const changeActiveEditor = vscode.window.onDidChangeActiveTextEditor(editor => {
@@ -79,11 +102,126 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	
 	context.subscriptions.push(
-		editTableCommand, 
+		editTableCommand,
+		createNewTableCommand,
 		changeActiveEditor,
 		changeDocument,
 		openTextDocument
 	);
+}
+
+// ユーザーからテーブルサイズの入力を取得する関数
+async function getTableSizeFromUser(): Promise<{ rows: number; columns: number } | undefined> {
+	// 列数を取得
+	const columnsInput = await vscode.window.showInputBox({
+		prompt: 'テーブルの列数を入力してください (1-20)',
+		placeHolder: '3',
+		validateInput: (value) => {
+			const num = parseInt(value, 10);
+			if (isNaN(num) || num < 1 || num > 20) {
+				return '1から20の間の数値を入力してください';
+			}
+			return null;
+		}
+	});
+
+	if (!columnsInput) {
+		return undefined;
+	}
+
+	const columns = parseInt(columnsInput, 10);
+
+	// 行数を取得
+	const rowsInput = await vscode.window.showInputBox({
+		prompt: 'テーブルの行数を入力してください (1-50)',
+		placeHolder: '3',
+		validateInput: (value) => {
+			const num = parseInt(value, 10);
+			if (isNaN(num) || num < 1 || num > 50) {
+				return '1から50の間の数値を入力してください';
+			}
+			return null;
+		}
+	});
+
+	if (!rowsInput) {
+		return undefined;
+	}
+
+	const rows = parseInt(rowsInput, 10);
+
+	return { rows, columns };
+}
+
+// 新しいテーブルを作成してエディタに挿入する関数
+async function createAndInsertNewTable(extensionUri: vscode.Uri, editor: vscode.TextEditor, rows: number, columns: number): Promise<void> {
+	try {
+		// テーブルのMarkdown形式を生成
+		const tableMarkdown = generateNewTableMarkdown(rows, columns);
+		
+		// 現在のカーソル位置を取得
+		const position = editor.selection.active;
+		
+		// テーブルを挿入
+		const edit = new vscode.WorkspaceEdit();
+		edit.insert(editor.document.uri, position, tableMarkdown);
+		
+		const success = await vscode.workspace.applyEdit(edit);
+		if (!success) {
+			vscode.window.showErrorMessage('テーブルの挿入に失敗しました');
+			return;
+		}
+
+		// 挿入したテーブルのデータを作成（ヘッダー行 + 区切り行 + データ行）
+		const startLine = position.line;
+		const endLine = startLine + rows; // ヘッダー行 + 区切り行 + データ行数 - 1
+		
+		// テーブルデータを生成
+		const headers = Array(columns).fill(0).map((_, i) => `Header${i + 1}`);
+		const dataRows = Array(rows - 1).fill(0).map(() => Array(columns).fill(''));
+		const alignments = Array(columns).fill('left');
+
+		const tableData: TableData = {
+			startLine,
+			endLine,
+			headers,
+			rows: dataRows,
+			columnCount: columns,
+			alignments
+		};
+
+		// テーブル編集パネルを表示
+		TableEditorPanel.createOrShow(extensionUri, tableData, editor);
+		
+		// 成功メッセージを表示
+		vscode.window.showInformationMessage(`${rows}行×${columns}列のテーブルを作成しました`);
+		
+	} catch (error) {
+		console.error('テーブル作成中にエラーが発生しました:', error);
+		vscode.window.showErrorMessage(`テーブル作成中にエラーが発生しました: ${error}`);
+	}
+}
+
+// 新しいテーブルのMarkdown形式を生成する関数
+function generateNewTableMarkdown(rows: number, columns: number): string {
+	const lines: string[] = [];
+	
+	// ヘッダー行を生成
+	const headers = Array(columns).fill(0).map((_, i) => `Header${i + 1}`);
+	lines.push(`| ${headers.join(' | ')} |`);
+	
+	// 区切り行を生成
+	const separators = Array(columns).fill('---');
+	lines.push(`| ${separators.join(' | ')} |`);
+	
+	// データ行を生成（ヘッダー行を除いた行数）
+	for (let i = 0; i < rows - 1; i++) {
+		const cells = Array(columns).fill('');
+		lines.push(`| ${cells.join(' | ')} |`);
+	}
+	
+	// 最後に改行を追加
+	return lines.join('\n') + '\n';
 }
 
 // テーブル行を検出してボタンを表示するデコレーション
