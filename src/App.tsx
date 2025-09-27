@@ -19,6 +19,7 @@ interface EditableTableData {
 interface AppProps {
   tableData: EditableTableData | null;
   onSaveTable: (markdown: string) => void;
+  onAutoSave?: (markdown: string) => void; // 自動保存用のコールバック
 }
 
 // EditableTableDataをTableDataに変換する関数
@@ -33,7 +34,7 @@ const convertToTableData = (editableData: EditableTableData): TableData => {
   );
 };
 
-function App({ tableData, onSaveTable }: AppProps) {
+function App({ tableData, onSaveTable, onAutoSave }: AppProps) {
   // テーブルデータがない場合は読み込み中を表示
   if (!tableData) {
     return <div className="loading">テーブルデータを読み込み中...</div>;
@@ -47,6 +48,7 @@ function App({ tableData, onSaveTable }: AppProps) {
       <Table 
         initialData={convertedTableData} 
         onSave={onSaveTable}
+        onAutoSave={onAutoSave}
       />
     </div>
   )

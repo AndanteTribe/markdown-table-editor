@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 
@@ -119,6 +119,8 @@ function sendMessage(message: Record<string, unknown>) {
 function MainApp() {
   const [tableData, setTableData] = useState<EditableTableData | null>(null);
   const [originalTableData, setOriginalTableData] = useState<TableDataFromVSCode | null>(null);
+  const [autoSaveEnabled] = useState(true); // 自動保存機能のON/OFF
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // VSCodeからのメッセージを受信
   useEffect(() => {
@@ -149,6 +151,11 @@ function MainApp() {
     // クリーンアップ関数
     return () => {
       window.removeEventListener('message', handleMessage);
+      // 自動保存のタイマーもクリーンアップ
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+        autoSaveTimeoutRef.current = null;
+      }
     };
   }, []);
 
@@ -162,19 +169,45 @@ function MainApp() {
       endLine: originalTableData.endLine,
     };
     
-    // VSCodeに更新を通知して、webviewを閉じるように指示
+    // VSCodeに更新を通知（webviewは開いたままにする）
     sendMessage({
       command: 'updateTable',
       tableData: vscodeData,
       markdownTable: markdown, // 生成したMarkdownテーブルを追加
-      closeWebview: true // webviewを閉じるフラグを追加
+      closeWebview: false // webviewを開いたままにするためfalseに変更
     });
   };
+
+  // 自動保存ハンドラー
+  const handleAutoSave = useCallback((markdown: string) => {
+    if (!originalTableData || !autoSaveEnabled) return;
+    
+    // クリアする既存のタイムアウト
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    // EditableTableのデータ形式からVSCode形式に変換
+    const vscodeData = {
+      startLine: originalTableData.startLine,
+      endLine: originalTableData.endLine,
+    };
+    
+    // VSCodeに更新を通知（自動保存なのでwebviewは閉じない）
+    sendMessage({
+      command: 'updateTable',
+      tableData: vscodeData,
+      markdownTable: markdown,
+      closeWebview: false,
+      isAutoSave: true // 自動保存であることを通知
+    });
+  }, [originalTableData, autoSaveEnabled]);
 
   return (
     <App 
       tableData={tableData} 
       onSaveTable={handleSaveTable}
+      onAutoSave={handleAutoSave}
     />
   );
 }
