@@ -187,6 +187,12 @@ function MainApp() {
       clearTimeout(autoSaveTimeoutRef.current);
     }
     
+    console.log('Auto-save triggered with table data:', {
+      startLine: originalTableData.startLine,
+      endLine: originalTableData.endLine,
+      markdownLength: markdown.length
+    });
+    
     // EditableTableのデータ形式からVSCode形式に変換
     const vscodeData = {
       startLine: originalTableData.startLine,
